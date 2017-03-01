@@ -1,0 +1,41 @@
+﻿<html>  
+<head>  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title></title>  
+    <script type="text/javascript">  
+        function setScanResult(result)
+		   {
+				var p = document.getElementById("scan_result");
+				p.innerText = result;
+		   }
+		function onBtnClick(){
+			window.demo.getHtmlJson("html数据");
+		}
+		function wave(jsData){
+			var p = document.getElementById("scan_result");
+			p.innerText = jsData;
+		}
+
+		function reset(){
+			var p = document.getElementById("scan_result");
+			p.innerText = "从安卓获取到得数据为：";
+		}
+		</script>
+		</head>
+<!--onload="javascript:myObject.init()璋冪敤鏈嶅姟鍣ㄧinit鏂规硶-->  
+<body id="mybody" >  
+	<p id="scan_result" style="color:#ff00ff">从安卓获取到得数据为：</p>
+	<hr/>
+      <p >网页通过url安卓进行交互,安卓通过javascript与网页交互</p>
+	  <hr/>
+	  <a href="startScanning://dsadasd/dsa" id="zxing">扫描二维码</a>&nbsp&nbsp&nbsp&nbsp
+	  
+	  <a href="startRouting:///116.4039630000/39.9151120000" >在线规划</a>
+	  <hr/>
+		<p id="scan_result">通过单纯javascript来与安卓进行交互</p>
+		 <hr/>
+		 <a  onclick="window.demo.clickOnAndroid()" style="color:#DB7093">单纯调用安卓方法!</a>&nbsp&nbsp&nbsp&nbsp
+		
+		 <a onclick="onBtnClick()" style="color:#DB7093">调用安卓并向安卓传递数据</button>
+</body>  
+</html>

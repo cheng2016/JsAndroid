@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -137,6 +138,7 @@ public class MainActivity extends AppCompatActivity {
 
     // 自定义javascript接口用于给网页js调用安卓代码
     final class DemoJavascriptInterface {
+        @JavascriptInterface
         public void clickOnAndroid() {
             hd.post(new Runnable() {
                 @Override
@@ -152,9 +154,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //js调用安卓并把数据传给安卓端
+        @JavascriptInterface
         public void getHtmlJson(final String json) {
             // TODO Auto-generated method stub
-            hd.post(new Runnable() {
+            runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     txt.setText("从html获取到得数据：" + json);

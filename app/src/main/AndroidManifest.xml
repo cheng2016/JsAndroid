@@ -22,6 +22,9 @@
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             android:windowSoftInputMode="stateAlwaysHidden" >
         </activity>
+        <activity android:name=".TouguShowH5Activity">
+
+        </activity>
     </application>
 
 

@@ -20,7 +20,7 @@ import android.widget.Toast;
 
 import com.zxing.activity.CaptureActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     WebView webView;
     // String url = "file:///android_asset/index.html";
     String url = "file:///android_asset/test.html";
@@ -75,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         });
+        url = "https://teste.csc108.com/fmall/main";
         webView.loadUrl(url);
         Log.e("xdb", "url:" + url);
 
@@ -84,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View arg0) {
                 // TODO Auto-generated method stub
                 webView.loadUrl("javascript:wave('"+setJsData()+"')");
+                startActivity(new Intent().setClass(MainActivity.this,TouguShowH5Activity.class));
             }
         });
 
@@ -98,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     public String setJsData(){
         return "从安卓获取到得数据为：安卓数据";
     }
@@ -107,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         init();
+        DensityUtil.px2dip(this,216);
+        DensityUtil.px2dip(this,226);
     }
 
     @Override

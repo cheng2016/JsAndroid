@@ -32,6 +32,37 @@ public class MainActivity extends Activity {
     TextView txt;
     private Handler hd = new Handler();
 
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        init();
+        DensityUtil.px2dip(this,216);
+        DensityUtil.px2dip(this,226);
+        if(null!=savedInstanceState){
+            webView.restoreState(savedInstanceState);
+            Log.i(TAG, "restore state");
+        }
+    }
+	
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        webView.saveState(outState);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // 处理扫描结果（在界面上显示）
+        if (resultCode == RESULT_OK) {
+            Bundle bundle = data.getExtras();
+            scanResult = bundle.getString("result");
+            txt.setText("从js获取到得数据为：" + scanResult);
+            webView.loadUrl("javascript:setScanResult('" + getJsonStr() + "')");
+        }
+    }
+	
     private void init() {
         txt = (TextView) findViewById(R.id.textView2);
         webView = (WebView) this.findViewById(R.id.wv);
@@ -99,43 +130,12 @@ public class MainActivity extends Activity {
                 webView.loadUrl("javascript:reset()");
             }
         });
-    }
+    }	
 
     public String setJsData(){
         return "从安卓获取到得数据为：安卓数据";
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        init();
-        DensityUtil.px2dip(this,216);
-        DensityUtil.px2dip(this,226);
-        if(null!=savedInstanceState){
-            webView.restoreState(savedInstanceState);
-            Log.i(TAG, "restore state");
-        }
-    }
+    }	
 	
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        webView.saveState(outState);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        // 处理扫描结果（在界面上显示）
-        if (resultCode == RESULT_OK) {
-            Bundle bundle = data.getExtras();
-            scanResult = bundle.getString("result");
-            txt.setText("从js获取到得数据为：" + scanResult);
-            webView.loadUrl("javascript:setScanResult('" + getJsonStr() + "')");
-        }
-    }
-
     public static String getJsonStr() {
         return scanResult;
     }
@@ -178,8 +178,6 @@ public class MainActivity extends Activity {
                     txt.setText("从html获取到得数据：" + json);
                 }
             });
-//			Toast.makeText(getApplicationContext(), "从html获取到得数据：" + json, 1000)
-//					.show();
         }
     }
 }

@@ -59,4 +59,7 @@ Js与原生安卓进行交互案列
 
 [WebView 你踩过的坑](http://blog.csdn.net/hytfly/article/details/48489251)
 
+[how-to-listen-for-a-webview-finishing-loading-a-url](https://stackoverflow.com/questions/3149216/how-to-listen-for-a-webview-finishing-loading-a-url)
+
+
 

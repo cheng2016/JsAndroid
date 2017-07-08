@@ -54,6 +54,19 @@ Js与原生安卓进行交互案列
         settings.setAppCacheEnabled(true);
     }	
 
+#### webview 销毁 
+    @Override
+    protected void onDestroy() {
+        mGroupLayout.removeAllViews();
+        webView.stopLoading();
+        webView.removeAllViews();
+        webView.destroy();
+        webView = null;
+        mGroupLayout = null;
+        super.onDestroy();
+    }
+
+
 
 ## Thanks
 

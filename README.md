@@ -61,5 +61,8 @@ Js与原生安卓进行交互案列
 
 [how-to-listen-for-a-webview-finishing-loading-a-url](https://stackoverflow.com/questions/3149216/how-to-listen-for-a-webview-finishing-loading-a-url)
 
+[WebView 滑动卡顿汇总](http://www.cnblogs.com/liu-fei/p/5622446.html)
+
+
 
 

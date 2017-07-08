@@ -112,6 +112,16 @@ public class MainActivity extends Activity {
         init();
         DensityUtil.px2dip(this,216);
         DensityUtil.px2dip(this,226);
+        if(null!=savedInstanceState){
+            webView.restoreState(savedInstanceState);
+            Log.i(TAG, "restore state");
+        }
+    }
+	
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        webView.saveState(outState);
     }
 
     @Override

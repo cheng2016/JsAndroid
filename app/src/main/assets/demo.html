@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>JsAndroid · 交互实验室</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.08);
+      --card: rgba(255, 255, 255, 0.88);
+      --teal: #0d9488;
+      --teal-deep: #0f766e;
+      --amber: #d97706;
+      --rose: #e11d48;
+      --sky: #0284c8;
+      --violet: #7c3aed;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #99f6e4 0%, transparent 55%),
+        radial-gradient(900px 420px at 100% 0%, #bae6fd 0%, transparent 50%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      min-height: 100vh;
+      padding: 14px 12px 40px;
+      line-height: 1.5;
+    }
+    .hero {
+      padding: 8px 4px 14px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--teal-deep);
+      background: rgba(13, 148, 136, 0.12);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      border-radius: 999px;
+      padding: 4px 10px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .toc {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 2px 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .toc a {
+      flex: 0 0 auto;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+    .panel {
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: #fff;
+    }
+    .tag.jsn { background: var(--teal); }
+    .tag.njs { background: var(--sky); }
+    .tag.both { background: var(--violet); }
+    .tag.sys { background: var(--amber); }
+    .desc {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    button, a.btn {
+      appearance: none;
+      border: none;
+      background: var(--teal);
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .12s ease, background .12s ease;
+    }
+    button:active, a.btn:active { transform: scale(0.98); }
+    button.alt { background: #334155; }
+    button.warn { background: var(--rose); }
+    button.sky { background: var(--sky); }
+    button.amber { background: var(--amber); }
+    button.violet { background: var(--violet); }
+    code {
+      font-family: ui-monospace, Consolas, "Courier New", monospace;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.06);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+    #log {
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: #0b1220;
+      color: #a7f3d0;
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 96px;
+      max-height: 220px;
+      overflow: auto;
+      font-size: 12px;
+      font-family: ui-monospace, Consolas, monospace;
+      margin: 0;
+    }
+    .progress-wrap {
+      height: 6px;
+      background: rgba(15, 23, 42, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    #progressBar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--teal), var(--sky));
+      transition: width .15s ease;
+    }
+    input[type="file"] { width: 100%; margin-top: 8px; font-size: 12px; }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 360px) {
+      .grid2 { grid-template-columns: 1fr; }
+    }
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="badge">WebView Bridge Lab</div>
+    <h1>JsAndroid 交互实验室</h1>
+    <p class="sub">覆盖 JS↔Android 经典场景：注入桥、URL Scheme、<code>alert/confirm/prompt</code>、异步回调、系统能力与权限。</p>
+  </header>
+
+  <nav class="toc" aria-label="目录">
+    <a href="#log-panel">日志</a>
+    <a href="#s-sync">同步</a>
+    <a href="#s-async">异步</a>
+    <a href="#s-chrome">Chrome</a>
+    <a href="#s-scheme">Scheme</a>
+    <a href="#s-system">系统</a>
+    <a href="#s-file">文件</a>
+    <a href="#s-scan">扫码</a>
+    <a href="#s-page">页面</a>
+    <a href="#s-storage">存储</a>
+  </nav>
+
+  <section class="panel" id="log-panel">
+    <h2>实时日志 <span class="tag both">双向</span></h2>
+    <p class="desc">所有交互结果打到这里。顶部 App「Native→JS」会主动推送 JSON。</p>
+    <pre id="log">等待交互…</pre>
+    <div class="progress-wrap" title="加载进度"><div id="progressBar"></div></div>
+    <div class="row" style="margin-top:10px">
+      <button class="alt" onclick="resetDemo()">清空日志</button>
+      <button class="sky" onclick="demoBridgeReady()">检测桥是否就绪</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-sync">
+    <h2>1. JS → Native 同步 <span class="tag jsn">JS→Native</span></h2>
+    <p class="desc"><code>@JavascriptInterface</code> 直接调用；可有返回值（在 WebView 线程同步返回）。</p>
+    <div class="row">
+      <button onclick="demoToast()">Toast</button>
+      <button onclick="demoDialog()">对话框</button>
+      <button onclick="demoStatus()">更新顶部状态</button>
+      <button onclick="demoTitle()">设置标题</button>
+      <button onclick="demoVibrate()">震动</button>
+      <button class="alt" onclick="demoDevice()">设备信息</button>
+      <button class="alt" onclick="demoApp()">App 信息</button>
+      <button class="alt" onclick="demoNetwork()">网络状态</button>
+      <button class="violet" onclick="demoPostJson()">传 JSON</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-async">
+    <h2>2. 异步回调 / Promise <span class="tag both">双向</span></h2>
+    <p class="desc">Native 延时处理后 <code>evaluateJavascript</code> 回调；JS 侧用 Promise 包装，贴近现代 H5 写法。</p>
+    <div class="row">
+      <button onclick="demoAsyncCallback()">callbackName 回调</button>
+      <button class="alt" onclick="demoPromise()">NativeCall().then()</button>
+      <button class="violet" onclick="demoConfirm()">Native Confirm</button>
+      <button class="violet" onclick="demoPrompt()">Native Prompt</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-chrome">
+    <h2>3. WebChromeClient 经典拦截 <span class="tag sys">系统</span></h2>
+    <p class="desc">网页自带的 <code>alert / confirm / prompt / console</code> 由 Native 接管（不依赖桥对象）。</p>
+    <div class="row">
+      <button class="amber" onclick="alert('这是 window.alert，已被 Native 拦截')">alert</button>
+      <button class="amber" onclick="demoJsConfirm()">confirm</button>
+      <button class="amber" onclick="demoJsPrompt()">prompt</button>
+      <button class="alt" onclick="console.log('hello from H5 console.log')">console.log</button>
+      <button class="alt" onclick="console.warn('warning sample'); console.error('error sample')">warn/error</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-scheme">
+    <h2>4. URL Scheme 拦截 <span class="tag jsn">JS→Native</span></h2>
+    <p class="desc"><code>shouldOverrideUrlLoading</code> 拦截自定义协议，适合 a 标签 / location.href。</p>
+    <div class="row">
+      <a class="btn" href="jsbridge://scan">jsbridge://scan</a>
+      <a class="btn" href="jsbridge://route?lng=116.403963&amp;lat=39.915112">传经纬度</a>
+      <a class="btn sky" href="jsbridge://toast?msg=Hello%20Scheme">Scheme Toast</a>
+      <a class="btn alt" href="jsbridge://browser?url=https%3A%2F%2Fdeveloper.android.com">外开浏览器</a>
+      <a class="btn amber" href="tel:10086">tel:10086</a>
+      <a class="btn amber" href="mailto:demo@example.com?subject=JsAndroid">mailto</a>
+    </div>
+  </section>
+
+  <section class="panel" id="s-system">
+    <h2>5. 系统能力 <span class="tag sys">Intent</span></h2>
+    <p class="desc">剪贴板、分享、拨号、短信、邮件、外链 —— Hybrid App 最常用系统出口。</p>
+    <div class="row">
+      <button onclick="demoCopy()">复制</button>
+      <button onclick="demoReadClip()">读取剪贴板</button>
+      <button onclick="demoShare()">系统分享</button>
+      <button class="sky" onclick="NativeBridge.dial('10086')">拨号</button>
+      <button class="sky" onclick="NativeBridge.sendSms('10086','来自 JsAndroid')">短信</button>
+      <button class="sky" onclick="NativeBridge.sendEmail('demo@example.com','主题','正文')">邮件</button>
+      <button class="alt" onclick="NativeBridge.openExternal('https://www.bing.com')">外开 Bing</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-file">
+    <h2>6. 文件选择 <span class="tag both">双向</span></h2>
+    <p class="desc">两条路径：桥方法 <code>pickFile()</code>，以及 HTML <code>&lt;input type=file&gt;</code> + <code>onShowFileChooser</code>。</p>
+    <div class="row">
+      <button onclick="demoPickFile()">桥方法选文件</button>
+      <a class="btn alt" href="#" onclick="triggerDownloadDemo();return false;">模拟下载监听</a>
+    </div>
+    <input type="file" accept="image/*,*/*" onchange="onHtmlFileChange(this)" />
+  </section>
+
+  <section class="panel" id="s-scan">
+    <h2>7. 权限 + 扫码 <span class="tag both">双向</span></h2>
+    <p class="desc">运行时申请 <code>CAMERA</code>，打开 ZXing，结果回写 <code>setScanResult</code>。</p>
+    <div class="row">
+      <button onclick="demoScan()">NativeBridge.startScan()</button>
+      <a class="btn alt" href="jsbridge://scan">Scheme 扫码</a>
+    </div>
+  </section>
+
+  <section class="panel" id="s-page">
+    <h2>8. 页面控制 <span class="tag jsn">JS→Native</span></h2>
+    <p class="desc">由 H5 驱动 WebView 导航 / 关闭 Activity，常见于容器型 App。</p>
+    <div class="grid2">
+      <button class="alt" onclick="log('canGoBack=' + NativeBridge.canGoBack());">canGoBack</button>
+      <button class="alt" onclick="NativeBridge.goBack()">goBack</button>
+      <button class="sky" onclick="NativeBridge.reload()">reload</button>
+      <button class="warn" onclick="demoClose()">closePage</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-storage">
+    <h2>9. H5 本地存储 <span class="tag both">Web API</span></h2>
+    <p class="desc">验证 WebView 已开启 <code>domStorage</code>；可与 Native 数据通道配合使用。</p>
+    <div class="row">
+      <button onclick="demoLocalSave()">写入 localStorage</button>
+      <button class="alt" onclick="demoLocalRead()">读取 localStorage</button>
+      <button class="amber" onclick="demoSession()">sessionStorage 计数</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>10. Native → JS <span class="tag njs">Native→JS</span></h2>
+    <p class="desc">点 App 顶部「Native→JS」：Native 用 <code>evaluateJavascript</code> 调用本页 <code>onNativeMessage</code>。也可点下面按钮自测注入。</p>
+    <div class="row">
+      <button class="violet" onclick="onNativeMessage({type:'self-test',msg:'页面内模拟 Native 推送',ts:Date.now()})">模拟收到推送</button>
+    </div>
+  </section>
+
+  <p class="footer-note">桥对象 <code>window.NativeBridge</code> · Chrome DevTools: <code>chrome://inspect</code></p>
+
+  <script>
+    function log(msg) {
+      var el = document.getElementById('log');
+      var time = new Date().toLocaleTimeString();
+      el.textContent = '[' + time + '] ' + msg + '\n' + el.textContent;
+    }
+
+    function hasBridge() {
+      return !!(window.NativeBridge);
+    }
+
+    function demoBridgeReady() {
+      log(hasBridge()
+        ? 'NativeBridge 已注入，可调用全部桥方法'
+        : '当前无 NativeBridge（请在 App WebView 打开）');
+    }
+
+    function demoToast() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.showToast('Hello from JS · ' + new Date().toLocaleTimeString());
+      log('showToast ✓');
+    }
+
+    function demoDialog() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.showDialog('来自网页', '这是 Native AlertDialog 示例');
+      log('showDialog ✓');
+    }
+
+    function demoStatus() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.setNativeStatus('JS 已更新顶部 TextView @' + Date.now());
+      log('setNativeStatus ✓');
+    }
+
+    function demoTitle() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.setTitle('标题来自 H5');
+      log('setTitle ✓');
+    }
+
+    function demoVibrate() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.vibrate(50);
+      log('vibrate(50) ✓');
+    }
+
+    function demoDevice() {
+      if (!hasBridge()) return log('桥不可用');
+      log('设备: ' + NativeBridge.getDeviceInfo());
+    }
+
+    function demoApp() {
+      if (!hasBridge()) return log('桥不可用');
+      log('App: ' + NativeBridge.getAppInfo());
+    }
+
+    function demoNetwork() {
+      if (!hasBridge()) return log('桥不可用');
+      log('网络: ' + NativeBridge.getNetworkInfo());
+    }
+
+    function demoPostJson() {
+      if (!hasBridge()) return log('桥不可用');
+      var payload = JSON.stringify({ name: 'JsAndroid', count: 9, tags: ['bridge', 'demo', 'hybrid'] });
+      NativeBridge.postJson(payload);
+      log('postJson → ' + payload);
+    }
+
+    window.__asyncCb = function (result) {
+      log('异步回调: ' + JSON.stringify(result));
+    };
+
+    function demoAsyncCallback() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.callNativeAsync('ping', 'payload-from-js', '__asyncCb');
+      log('callNativeAsync 已发出，等待回调…');
+    }
+
+    window.NativeCall = function (action, payload) {
+      return new Promise(function (resolve, reject) {
+        if (!hasBridge()) {
+          reject(new Error('NativeBridge 不可用'));
+          return;
+        }
+        var cbName = '__promise_cb_' + Date.now();
+        window[cbName] = function (result) {
+          resolve(result);
+          try { delete window[cbName]; } catch (e) {}
+        };
+        NativeBridge.callNativeAsync(action || 'call', payload || '', cbName);
+      });
+    };
+
+    function demoPromise() {
+      log('Promise 调用中…');
+      NativeCall('promiseDemo', 'hello-promise').then(function (data) {
+        log('Promise then → ' + JSON.stringify(data));
+      }).catch(function (err) {
+        log('Promise error → ' + err);
+      });
+    }
+
+    window.__confirmCb = function (ok) {
+      log('Native Confirm 结果: ' + ok);
+    };
+    function demoConfirm() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.showConfirm('删除确认', '确定要执行这个操作吗？', '__confirmCb');
+    }
+
+    window.__promptCb = function (text) {
+      log('Native Prompt 结果: ' + text);
+    };
+    function demoPrompt() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.showPrompt('请输入昵称', 'Guest', '__promptCb');
+    }
+
+    function demoJsConfirm() {
+      var ok = confirm('这是 window.confirm，由 WebChromeClient 拦截');
+      log('confirm 返回: ' + ok);
+    }
+
+    function demoJsPrompt() {
+      var v = prompt('这是 window.prompt', '默认值');
+      log('prompt 返回: ' + v);
+    }
+
+    function demoCopy() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.copyToClipboard('JsAndroid clipboard @' + Date.now());
+      log('copyToClipboard ✓');
+    }
+
+    function demoReadClip() {
+      if (!hasBridge()) return log('桥不可用');
+      log('剪贴板: ' + NativeBridge.readClipboard());
+    }
+
+    function demoShare() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.shareText('来自 JsAndroid 演示页的分享内容');
+      log('shareText ✓');
+    }
+
+    function demoPickFile() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.pickFile();
+      log('pickFile 已请求');
+    }
+
+    function demoScan() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.startScan();
+      log('startScan 已请求（可能弹出权限框）');
+    }
+
+    function demoClose() {
+      if (!hasBridge()) return log('桥不可用');
+      if (confirm('确定关闭当前 Activity？')) {
+        NativeBridge.closePage();
+      }
+    }
+
+    function demoLocalSave() {
+      localStorage.setItem('jsandroid_demo', JSON.stringify({ savedAt: Date.now(), tip: 'domStorage ok' }));
+      log('localStorage 已写入 key=jsandroid_demo');
+    }
+
+    function demoLocalRead() {
+      log('localStorage: ' + localStorage.getItem('jsandroid_demo'));
+    }
+
+    function demoSession() {
+      var n = parseInt(sessionStorage.getItem('clicks') || '0', 10) + 1;
+      sessionStorage.setItem('clicks', String(n));
+      log('sessionStorage clicks=' + n);
+    }
+
+    function onHtmlFileChange(input) {
+      if (!input.files || !input.files.length) {
+        log('未选择文件');
+        return;
+      }
+      var f = input.files[0];
+      log('input[file] → ' + f.name + ' · ' + f.type + ' · ' + f.size + ' bytes');
+    }
+
+    function triggerDownloadDemo() {
+      // Create a blob URL download to exercise DownloadListener when possible;
+      // on file:// assets some devices may not fire it — also document the API.
+      log('提示: DownloadListener 多用于 http(s) 下载链接；本地 file 可能不触发。');
+      var a = document.createElement('a');
+      a.href = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+      a.download = 'dummy.pdf';
+      a.click();
+    }
+
+    // ---- callbacks from Native ----
+    function onNativeMessage(msg) {
+      log('Native→JS: ' + (typeof msg === 'string' ? msg : JSON.stringify(msg)));
+    }
+
+    function setScanResult(result) {
+      log('扫码结果: ' + result);
+    }
+
+    function onRouteResult(lng, lat) {
+      log('路由坐标: lng=' + lng + ', lat=' + lat);
+    }
+
+    function onFilePicked(uri) {
+      log('桥选文件: ' + uri);
+    }
+
+    function onConsoleFromNative(line) {
+      log('console↔Native: ' + line);
+    }
+
+    function onLoadProgress(p) {
+      var bar = document.getElementById('progressBar');
+      if (bar) bar.style.width = Math.max(0, Math.min(100, p)) + '%';
+    }
+
+    function onDownloadRequested(url, mime) {
+      log('DownloadListener: ' + url + ' (' + mime + ')');
+    }
+
+    function resetDemo() {
+      document.getElementById('log').textContent = '日志已清空';
+      var bar = document.getElementById('progressBar');
+      if (bar) bar.style.width = '0%';
+    }
+
+    demoBridgeReady();
+  </script>
+</body>
+</html>

@@ -17,7 +17,6 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.CookieSyncManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -81,7 +80,6 @@ public class TouguShowH5Activity extends WebkitActivity implements ISubTabView{
 		getKdsWebView().setWebChromeClient(new WebChromeClient() {
 			@Override
 			public void onReceivedTitle(WebView view, String title) {
-				// TODO Auto-generated method stub
 				super.onReceivedTitle(view, title);
 				String functionCode = getIntent().getStringExtra("functionCode");
 				if ("KDS_YouWen_YWYD".equalsIgnoreCase(functionCode))
@@ -89,55 +87,52 @@ public class TouguShowH5Activity extends WebkitActivity implements ISubTabView{
 				else if(!TextUtils.isEmpty(functionCode) &&
 						(functionCode.startsWith("KDS_TICKET")
 						|| functionCode.startsWith("KDS_PHONE_TICKET"))){
-					//[需求]加载建投公募基金、我的Level 2等Web界面时不读取 Html页面的Title.
-
+					// skip title
 				}else
 					setTitle(title);
 			}
 
+			@Override
 			public void onProgressChanged(WebView view, int newProgress) {
 				if (newProgress == 100)
 					mProgressBar.setVisibility(View.GONE);
-
 				super.onProgressChanged(view, newProgress);
 			}
 
-			//支持webview调用原生相册进行上传图片到WebView中
-			// Android > 4.1.1 调用这个方法
+			@Override
+			public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
+											FileChooserParams fileChooserParams) {
+				mFilePathCallback = filePathCallback;
+				Intent intent = fileChooserParams.createIntent();
+				try {
+					startActivityForResult(intent, FILECHOOSER_RESULTCODE);
+				} catch (Exception e) {
+					mFilePathCallback = null;
+					return false;
+				}
+				return true;
+			}
+
+			// legacy Android < 5.0 chooser overloads
+			@SuppressWarnings("unused")
 			public void openFileChooser(ValueCallback<Uri> uploadMsg,
                                         String acceptType, String capture) {
-
 				mUploadMessage = uploadMsg;
 				Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
 				intent.addCategory(Intent.CATEGORY_OPENABLE);
 				intent.setType("image/*");
-
-				TouguShowH5Activity.this.startActivityForResult(
-						Intent.createChooser(intent, "完成操作需要使用"),
+				startActivityForResult(Intent.createChooser(intent, "完成操作需要使用"),
 						FILECHOOSER_RESULTCODE);
 			}
 
-			// 3.0 + 调用这个方法
-			public void openFileChooser(ValueCallback<Uri> uploadMsg,
-										String acceptType) {
-				mUploadMessage = uploadMsg;
-				Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-				intent.addCategory(Intent.CATEGORY_OPENABLE);
-				intent.setType("image/*");
-				TouguShowH5Activity.this.startActivityForResult(
-						Intent.createChooser(intent, "完成操作需要使用"),
-						FILECHOOSER_RESULTCODE);
+			@SuppressWarnings("unused")
+			public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType) {
+				openFileChooser(uploadMsg, acceptType, null);
 			}
 
-			// Android < 3.0 调用这个方法
+			@SuppressWarnings("unused")
 			public void openFileChooser(ValueCallback<Uri> uploadMsg) {
-				mUploadMessage = uploadMsg;
-				Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-				intent.addCategory(Intent.CATEGORY_OPENABLE);
-				intent.setType("image/*");
-				TouguShowH5Activity.this.startActivityForResult(
-						Intent.createChooser(intent, "完成操作需要使用"),
-						FILECHOOSER_RESULTCODE);
+				openFileChooser(uploadMsg, "image/*", null);
 			}
 		});
 		getKdsWebView().setWebViewClient(new WebViewClient() {
@@ -163,12 +158,33 @@ public class TouguShowH5Activity extends WebkitActivity implements ISubTabView{
 	}
 
 	private ValueCallback<Uri> mUploadMessage;
-	private final static int FILECHOOSER_RESULTCODE=1;  
+	private ValueCallback<Uri[]> mFilePathCallback;
+	private final static int FILECHOOSER_RESULTCODE=1;
 	@SuppressLint("NewApi")
 	@Override
-	protected void onActivityResult(int requestCode, int resultCode,  
+	protected void onActivityResult(int requestCode, int resultCode,
 	        Intent intent) {
-		
+		if (requestCode != FILECHOOSER_RESULTCODE) {
+			return;
+		}
+		if (mFilePathCallback != null) {
+			Uri[] results = null;
+			if (resultCode == Activity.RESULT_OK && intent != null) {
+				String dataString = intent.getDataString();
+				if (dataString != null) {
+					results = new Uri[]{Uri.parse(dataString)};
+				}
+			}
+			mFilePathCallback.onReceiveValue(results);
+			mFilePathCallback = null;
+			return;
+		}
+		if (mUploadMessage != null) {
+			Uri result = (resultCode == Activity.RESULT_OK && intent != null)
+					? intent.getData() : null;
+			mUploadMessage.onReceiveValue(result);
+			mUploadMessage = null;
+		}
 	}
 
 	private void commitBitmap(Intent intent){

@@ -1,5 +1,9 @@
 # JsAndroid · JS ↔ Android 交互实验室
 
+Js 与原生安卓进行交互案例
+
+![](screenshot/20170301162221.png)   ![](screenshot/20170301162011.png)
+
 面向 Hybrid / WebView 场景的**可运行示例集**：升级到 AndroidX + AGP 8.x，启动即加载本地 [`assets/demo.html`](app/src/main/assets/demo.html)，覆盖从「注入桥」到「系统能力」的经典交互。
 
 > 适合：想搞清楚 H5 和原生到底怎么通信、各有什么坑的人。不是金融业务壳，是教学向演示。

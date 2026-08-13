@@ -203,6 +203,10 @@
     <a href="#s-scan">扫码</a>
     <a href="#s-page">页面</a>
     <a href="#s-storage">存储</a>
+    <a href="#s-cookie">Cookie</a>
+    <a href="#s-loc">定位</a>
+    <a href="#s-img">图片</a>
+    <a href="#s-auth">鉴权</a>
   </nav>
 
   <section class="panel" id="log-panel">
@@ -322,8 +326,44 @@
     </div>
   </section>
 
+  <section class="panel" id="s-cookie">
+    <h2>10. Cookie 同步 <span class="tag both">双向</span></h2>
+    <p class="desc">Native <code>CookieManager</code> 读写，常用于登录态注入 H5。</p>
+    <div class="row">
+      <button onclick="demoSetCookie()">写入演示 Cookie</button>
+      <button class="alt" onclick="demoGetCookie()">读取 Cookie</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-loc">
+    <h2>11. 定位 <span class="tag both">权限</span></h2>
+    <p class="desc">运行时申请定位权限，回传 lastKnownLocation（演示向，非持续定位）。</p>
+    <div class="row">
+      <button class="sky" onclick="demoLocation()">getLocation()</button>
+    </div>
+  </section>
+
+  <section class="panel" id="s-img">
+    <h2>12. Base64 图片 <span class="tag both">双向</span></h2>
+    <p class="desc">相册选图 → Native 压缩 → <code>data:image/jpeg;base64,...</code> 回传 H5 展示。</p>
+    <div class="row">
+      <button class="violet" onclick="demoPickImage()">选图并回传 Base64</button>
+    </div>
+    <img id="previewImg" alt="" style="display:none;max-width:100%;margin-top:10px;border-radius:10px;" />
+  </section>
+
+  <section class="panel" id="s-auth">
+    <h2>13. 白名单 + Token 鉴权 <span class="tag sys">生产向</span></h2>
+    <p class="desc"><code>secureCall</code> 要求：当前页在受信来源（assets / localhost）且 token 正确。演示 token：<code>demo-token-jsandroid</code></p>
+    <div class="row">
+      <button onclick="demoSecureOk()">正确 token</button>
+      <button class="warn" onclick="demoSecureBad()">错误 token</button>
+      <button class="alt" onclick="log('isTrustedPage=' + NativeBridge.isTrustedPage())">检查受信页</button>
+    </div>
+  </section>
+
   <section class="panel">
-    <h2>10. Native → JS <span class="tag njs">Native→JS</span></h2>
+    <h2>14. Native → JS <span class="tag njs">Native→JS</span></h2>
     <p class="desc">点 App 顶部「Native→JS」：Native 用 <code>evaluateJavascript</code> 调用本页 <code>onNativeMessage</code>。也可点下面按钮自测注入。</p>
     <div class="row">
       <button class="violet" onclick="onNativeMessage({type:'self-test',msg:'页面内模拟 Native 推送',ts:Date.now()})">模拟收到推送</button>
@@ -510,6 +550,53 @@
       var n = parseInt(sessionStorage.getItem('clicks') || '0', 10) + 1;
       sessionStorage.setItem('clicks', String(n));
       log('sessionStorage clicks=' + n);
+    }
+
+    function demoSetCookie() {
+      if (!hasBridge()) return log('桥不可用');
+      // file:// cookies are limited on some devices; use a demo https host string
+      NativeBridge.setCookie('https://demo.jsandroid.local/', 'sid=jsandroid-' + Date.now() + '; Path=/');
+      log('setCookie ✓');
+    }
+
+    function demoGetCookie() {
+      if (!hasBridge()) return log('桥不可用');
+      log('Cookie: ' + NativeBridge.getCookie('https://demo.jsandroid.local/'));
+    }
+
+    window.__locCb = function (result) {
+      log('定位: ' + JSON.stringify(result));
+    };
+    function demoLocation() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.getLocation('__locCb');
+      log('getLocation 已请求…');
+    }
+
+    window.__imgCb = function (dataUrl) {
+      if (!dataUrl) {
+        log('未选择图片或转换失败');
+        return;
+      }
+      log('收到 Base64 长度: ' + dataUrl.length);
+      var img = document.getElementById('previewImg');
+      img.src = dataUrl;
+      img.style.display = 'block';
+    };
+    function demoPickImage() {
+      if (!hasBridge()) return log('桥不可用');
+      NativeBridge.pickImageBase64('__imgCb');
+      log('pickImageBase64 已请求…');
+    }
+
+    function demoSecureOk() {
+      if (!hasBridge()) return log('桥不可用');
+      log('secureCall ok → ' + NativeBridge.secureCall('demo-token-jsandroid', 'pay', '{"amount":1}'));
+    }
+
+    function demoSecureBad() {
+      if (!hasBridge()) return log('桥不可用');
+      log('secureCall bad → ' + NativeBridge.secureCall('wrong-token', 'pay', '{}'));
     }
 
     function onHtmlFileChange(input) {

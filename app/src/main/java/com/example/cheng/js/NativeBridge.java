@@ -53,6 +53,17 @@ public class NativeBridge {
         void openExternalUrl(String url);
 
         void setActivityTitle(String title);
+
+        /** Whether current page is allowed to call sensitive APIs */
+        boolean isTrustedPage();
+
+        void requestLocation(String callbackName);
+
+        void pickImageAsBase64(String callbackName);
+
+        String getCookie(String url);
+
+        void setCookie(String url, String cookie);
     }
 
     private final Host host;
@@ -500,6 +511,78 @@ public class NativeBridge {
                 host.closePage();
             }
         });
+    }
+
+    // ---------- Cookie / Location / Image / Auth ----------
+
+    @JavascriptInterface
+    public String getCookie(String url) {
+        String value = host.getCookie(url);
+        return value == null ? "" : value;
+    }
+
+    @JavascriptInterface
+    public void setCookie(final String url, final String cookie) {
+        runOnUi(new Runnable() {
+            @Override
+            public void run() {
+                host.setCookie(url, cookie);
+                Toast.makeText(host.getActivity(), "Cookie 已写入", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void getLocation(final String callbackName) {
+        runOnUi(new Runnable() {
+            @Override
+            public void run() {
+                host.requestLocation(callbackName);
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void pickImageBase64(final String callbackName) {
+        runOnUi(new Runnable() {
+            @Override
+            public void run() {
+                host.pickImageAsBase64(callbackName);
+            }
+        });
+    }
+
+    /**
+     * Production-style gate: requires demo token + trusted page origin.
+     * Demo token: demo-token-jsandroid
+     */
+    @JavascriptInterface
+    public String secureCall(String token, String action, String payload) {
+        JSONObject out = new JSONObject();
+        try {
+            if (!host.isTrustedPage()) {
+                out.put("ok", false);
+                out.put("error", "untrusted_origin");
+                return out.toString();
+            }
+            if (!"demo-token-jsandroid".equals(token)) {
+                out.put("ok", false);
+                out.put("error", "unauthorized");
+                return out.toString();
+            }
+            out.put("ok", true);
+            out.put("action", action == null ? "" : action);
+            out.put("echo", payload == null ? "" : payload);
+            out.put("from", "secureCall");
+            out.put("ts", System.currentTimeMillis());
+        } catch (JSONException ignored) {
+        }
+        return out.toString();
+    }
+
+    @JavascriptInterface
+    public boolean isTrustedPage() {
+        return host.isTrustedPage();
     }
 
     // ---------- helpers ----------

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>遗留 H5 壳说明</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #fff7ed, #f8fafc);
+      color: #0f172a;
+      padding: 20px;
+      line-height: 1.55;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #fed7aa;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    .badge {
+      display: inline-block;
+      background: #ffedd5;
+      color: #c2410c;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    p { color: #475569; font-size: 14px; }
+    code {
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    ul { color: #334155; font-size: 14px; }
+    a.btn {
+      display: inline-block;
+      margin-top: 8px;
+      background: #0d9488;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">Legacy / 遗留示例</div>
+    <h1>旧 H5 壳（TouguShowH5Activity）</h1>
+    <p>
+      这里不再加载可能失效的远程金融站点。本页用于说明历史容器代码仍保留，
+      正式交互请回到主演示页 <code>demo.html</code>。
+    </p>
+    <ul>
+      <li>标题栏 / ProgressBar / 文件上传回调：见 <code>TouguShowH5Activity</code></li>
+      <li>业务接口 stub：见 <code>BaseInterface</code> / <code>TouguInterface</code>（未实现）</li>
+      <li>可通过 Intent 额外 <code>key_h5url</code> 覆盖加载地址</li>
+    </ul>
+    <p>扫码 / Toast / Scheme / Promise 等完整示例请返回主 Activity。</p>
+  </div>
+</body>
+</html>

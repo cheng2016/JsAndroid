@@ -4,12 +4,19 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.webkit.CookieManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.DownloadListener;
 import android.webkit.JsPromptResult;
@@ -24,6 +31,10 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -32,24 +43,47 @@ import androidx.core.content.ContextCompat;
 
 import com.zxing.activity.CaptureActivity;
 
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 public class MainActivity extends AppCompatActivity implements NativeBridge.Host {
 
     private static final String TAG = "MainActivity";
     private static final String DEMO_URL = "file:///android_asset/demo.html";
-    private static final int REQ_SCAN = 1001;
     private static final int REQ_CAMERA_PERMISSION = 1002;
-    private static final int REQ_FILE_CHOOSER = 1003;
-    private static final int REQ_BRIDGE_PICK = 1004;
+    private static final int REQ_LOCATION_PERMISSION = 1005;
+
+    /** Hosts allowed for sensitive bridge APIs in addition to local assets. */
+    private static final Set<String> TRUSTED_HOSTS = new HashSet<String>(Arrays.asList(
+            "localhost",
+            "127.0.0.1"
+    ));
 
     private WebView webView;
     private TextView statusView;
     private ValueCallback<Uri[]> filePathCallback;
+    private String pendingLocationCallback;
+    private String pendingImageCallback;
+
+    private ActivityResultLauncher<Intent> scanLauncher;
+    private ActivityResultLauncher<Intent> fileChooserLauncher;
+    private ActivityResultLauncher<Intent> bridgePickLauncher;
+    private ActivityResultLauncher<Intent> imagePickLauncher;
+    private ActivityResultLauncher<String[]> locationPermissionLauncher;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setTitle("JsAndroid 交互演示");
+
+        registerLaunchers();
 
         statusView = findViewById(R.id.textView2);
         webView = findViewById(R.id.wv);
@@ -87,6 +121,108 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
         });
     }
 
+    private void registerLaunchers() {
+        scanLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+                            return;
+                        }
+                        Bundle bundle = result.getData().getExtras();
+                        String scanResult = bundle != null ? bundle.getString("result") : null;
+                        updateStatus("扫码结果: " + scanResult);
+                        evaluateJavascript("typeof setScanResult==='function'&&setScanResult("
+                                + NativeBridge.jsonStringLiteral(scanResult) + ")");
+                    }
+                });
+
+        fileChooserLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        Uri[] results = null;
+                        Intent data = result.getData();
+                        if (result.getResultCode() == Activity.RESULT_OK && data != null) {
+                            String dataString = data.getDataString();
+                            if (dataString != null) {
+                                results = new Uri[]{Uri.parse(dataString)};
+                            } else if (data.getClipData() != null) {
+                                int count = data.getClipData().getItemCount();
+                                results = new Uri[count];
+                                for (int i = 0; i < count; i++) {
+                                    results[i] = data.getClipData().getItemAt(i).getUri();
+                                }
+                            }
+                        }
+                        if (filePathCallback != null) {
+                            filePathCallback.onReceiveValue(results);
+                            filePathCallback = null;
+                        }
+                    }
+                });
+
+        bridgePickLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        Intent data = result.getData();
+                        if (result.getResultCode() == Activity.RESULT_OK && data != null && data.getData() != null) {
+                            String uri = data.getData().toString();
+                            updateStatus("已选择文件: " + uri);
+                            evaluateJavascript("typeof onFilePicked==='function'&&onFilePicked("
+                                    + NativeBridge.jsonStringLiteral(uri) + ")");
+                        } else {
+                            evaluateJavascript("typeof onFilePicked==='function'&&onFilePicked(null)");
+                        }
+                    }
+                });
+
+        imagePickLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        String cb = pendingImageCallback;
+                        pendingImageCallback = null;
+                        if (cb == null) {
+                            return;
+                        }
+                        Intent data = result.getData();
+                        if (result.getResultCode() != Activity.RESULT_OK || data == null || data.getData() == null) {
+                            invokeJsCallback(cb, "null");
+                            return;
+                        }
+                        String base64 = uriToJpegBase64(data.getData());
+                        if (base64 == null) {
+                            invokeJsCallback(cb, NativeBridge.jsonStringLiteral(""));
+                        } else {
+                            invokeJsCallback(cb, NativeBridge.jsonStringLiteral(base64));
+                        }
+                    }
+                });
+
+        locationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                new ActivityResultCallback<Map<String, Boolean>>() {
+                    @Override
+                    public void onActivityResult(Map<String, Boolean> result) {
+                        boolean granted = Boolean.TRUE.equals(result.get(Manifest.permission.ACCESS_COARSE_LOCATION))
+                                || Boolean.TRUE.equals(result.get(Manifest.permission.ACCESS_FINE_LOCATION));
+                        if (granted) {
+                            deliverLocation(pendingLocationCallback);
+                        } else {
+                            Toast.makeText(MainActivity.this, "需要定位权限", Toast.LENGTH_SHORT).show();
+                            deliverLocationError(pendingLocationCallback, "permission_denied");
+                        }
+                        pendingLocationCallback = null;
+                    }
+                });
+    }
+
     private void setupWebView(WebView webView) {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -104,6 +240,12 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
         settings.setLoadsImagesAutomatically(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
+
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
@@ -137,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
                 MainActivity.this.filePathCallback = filePathCallback;
                 Intent intent = fileChooserParams.createIntent();
                 try {
-                    startActivityForResult(intent, REQ_FILE_CHOOSER);
+                    fileChooserLauncher.launch(intent);
                 } catch (Exception e) {
                     MainActivity.this.filePathCallback = null;
                     Toast.makeText(MainActivity.this, "无法打开文件选择器", Toast.LENGTH_SHORT).show();
@@ -229,7 +371,6 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
         }
         String lower = url.toLowerCase();
 
-        // tel / mailto / sms — classic system schemes
         if (lower.startsWith("tel:") || lower.startsWith("mailto:") || lower.startsWith("sms:")
                 || lower.startsWith("smsto:")) {
             openExternalUrl(url);
@@ -298,51 +439,6 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_FILE_CHOOSER) {
-            Uri[] results = null;
-            if (resultCode == Activity.RESULT_OK && data != null) {
-                String dataString = data.getDataString();
-                if (dataString != null) {
-                    results = new Uri[]{Uri.parse(dataString)};
-                } else if (data.getClipData() != null) {
-                    int count = data.getClipData().getItemCount();
-                    results = new Uri[count];
-                    for (int i = 0; i < count; i++) {
-                        results[i] = data.getClipData().getItemAt(i).getUri();
-                    }
-                }
-            }
-            if (filePathCallback != null) {
-                filePathCallback.onReceiveValue(results);
-                filePathCallback = null;
-            }
-            return;
-        }
-
-        if (requestCode == REQ_BRIDGE_PICK) {
-            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
-                String uri = data.getData().toString();
-                updateStatus("已选择文件: " + uri);
-                evaluateJavascript("typeof onFilePicked==='function'&&onFilePicked("
-                        + NativeBridge.jsonStringLiteral(uri) + ")");
-            } else {
-                evaluateJavascript("typeof onFilePicked==='function'&&onFilePicked(null)");
-            }
-            return;
-        }
-
-        if (requestCode == REQ_SCAN && resultCode == RESULT_OK && data != null) {
-            Bundle bundle = data.getExtras();
-            String scanResult = bundle != null ? bundle.getString("result") : null;
-            updateStatus("扫码结果: " + scanResult);
-            evaluateJavascript("typeof setScanResult==='function'&&setScanResult("
-                    + NativeBridge.jsonStringLiteral(scanResult) + ")");
-        }
-    }
-
-    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -396,7 +492,7 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
     private void launchCapture() {
         Intent intent = new Intent(this, CaptureActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        startActivityForResult(intent, REQ_SCAN);
+        scanLauncher.launch(intent);
     }
 
     @Override
@@ -405,7 +501,7 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("*/*");
         try {
-            startActivityForResult(Intent.createChooser(intent, "选择文件"), REQ_BRIDGE_PICK);
+            bridgePickLauncher.launch(Intent.createChooser(intent, "选择文件"));
         } catch (Exception e) {
             Toast.makeText(this, "无法打开文件选择器", Toast.LENGTH_SHORT).show();
         }
@@ -453,6 +549,169 @@ public class MainActivity extends AppCompatActivity implements NativeBridge.Host
     public void setActivityTitle(String title) {
         setTitle(title == null ? "" : title);
         updateStatus("页面标题已设为: " + title);
+    }
+
+    @Override
+    public boolean isTrustedPage() {
+        if (webView == null) {
+            return false;
+        }
+        String url = webView.getUrl();
+        if (url == null) {
+            return false;
+        }
+        if (url.startsWith("file:///android_asset/")) {
+            return true;
+        }
+        Uri uri = Uri.parse(url);
+        String host = uri.getHost();
+        return host != null && TRUSTED_HOSTS.contains(host.toLowerCase());
+    }
+
+    @Override
+    public void requestLocation(String callbackName) {
+        pendingLocationCallback = callbackName;
+        boolean fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED;
+        if (!fine && !coarse) {
+            locationPermissionLauncher.launch(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            });
+            return;
+        }
+        deliverLocation(callbackName);
+        pendingLocationCallback = null;
+    }
+
+    @SuppressWarnings("MissingPermission")
+    private void deliverLocation(String callbackName) {
+        if (callbackName == null) {
+            return;
+        }
+        try {
+            LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+            Location loc = null;
+            if (lm != null) {
+                loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (loc == null) {
+                    loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                }
+                if (loc == null) {
+                    loc = lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+                }
+            }
+            JSONObject json = new JSONObject();
+            if (loc != null) {
+                json.put("ok", true);
+                json.put("lat", loc.getLatitude());
+                json.put("lng", loc.getLongitude());
+                json.put("accuracy", loc.getAccuracy());
+                json.put("provider", loc.getProvider());
+            } else {
+                json.put("ok", false);
+                json.put("error", "no_last_known_location");
+                json.put("hint", "请到室外打开定位后再试，或使用系统地图应用激活一次定位");
+            }
+            invokeJsCallback(callbackName, json.toString());
+        } catch (Exception e) {
+            deliverLocationError(callbackName, e.getMessage());
+        }
+    }
+
+    private void deliverLocationError(String callbackName, String error) {
+        if (callbackName == null) {
+            return;
+        }
+        try {
+            JSONObject json = new JSONObject();
+            json.put("ok", false);
+            json.put("error", error == null ? "unknown" : error);
+            invokeJsCallback(callbackName, json.toString());
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    public void pickImageAsBase64(String callbackName) {
+        pendingImageCallback = callbackName;
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        try {
+            imagePickLauncher.launch(intent);
+        } catch (Exception e) {
+            pendingImageCallback = null;
+            Toast.makeText(this, "无法打开相册", Toast.LENGTH_SHORT).show();
+            invokeJsCallback(callbackName, "null");
+        }
+    }
+
+    private String uriToJpegBase64(Uri uri) {
+        InputStream in = null;
+        try {
+            in = getContentResolver().openInputStream(uri);
+            if (in == null) {
+                return null;
+            }
+            Bitmap bitmap = BitmapFactory.decodeStream(in);
+            if (bitmap == null) {
+                return null;
+            }
+            int max = 800;
+            int w = bitmap.getWidth();
+            int h = bitmap.getHeight();
+            if (w > max || h > max) {
+                float scale = Math.min((float) max / w, (float) max / h);
+                bitmap = Bitmap.createScaledBitmap(bitmap, Math.round(w * scale), Math.round(h * scale), true);
+            }
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, bos);
+            return "data:image/jpeg;base64," + Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
+        } catch (Exception e) {
+            Log.e(TAG, "uriToJpegBase64", e);
+            return null;
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
+    @Override
+    public String getCookie(String url) {
+        try {
+            String cookie = CookieManager.getInstance().getCookie(url);
+            return cookie == null ? "" : cookie;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    @Override
+    public void setCookie(String url, String cookie) {
+        CookieManager cm = CookieManager.getInstance();
+        cm.setCookie(url, cookie);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cm.flush();
+        }
+        updateStatus("Cookie set for " + url);
+    }
+
+    private void invokeJsCallback(String callbackName, String jsArgLiteralOrObject) {
+        if (callbackName == null) {
+            return;
+        }
+        String safe = callbackName.replaceAll("[^A-Za-z0-9_$]", "");
+        if (safe.length() == 0) {
+            return;
+        }
+        evaluateJavascript("typeof window['" + safe + "']==='function'&&window['"
+                + safe + "'](" + jsArgLiteralOrObject + ")");
     }
 
     @Override

@@ -71,9 +71,14 @@ public class TouguShowH5Activity extends WebkitActivity implements ISubTabView{
 
 		backType = this.getIntent().getIntExtra("backType", 0);
 
-		this.setUrl("https://teste.csc108.com/fmall/main");
-
-
+		// Prefer explicit URL; otherwise load local legacy explanation page
+		// (remote finance demo URL is no longer the default).
+		if (TextUtils.isEmpty(url)) {
+			url = "file:///android_asset/legacy_shell.html";
+		}
+		this.setUrl(url);
+		setTitleVisibility(View.VISIBLE);
+		setTitle("遗留 H5 壳");
 
 //		Logger.d("TouguShowH5Activity1", "加载完成");
 

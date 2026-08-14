@@ -28,9 +28,11 @@ jobs:
       - name: Assemble Debug
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload debug APK
+      - name: Upload debug APK (CI artifact, expires)
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 7

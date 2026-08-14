@@ -1,0 +1,53 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Assemble Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/JsAndroid-${GITHUB_REF_NAME}.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/JsAndroid-*.apk
+          generate_release_notes: true
+          body: |
+            ## 下载
+
+            安装包：`JsAndroid-${{ github.ref_name }}.apk`（debug 签名，仅演示用）
+
+            ## 说明
+
+            - 启动后加载本地 `assets/demo.html` 交互实验室
+            - 源码构建：`./gradlew assembleDebug`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

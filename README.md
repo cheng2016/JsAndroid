@@ -10,6 +10,13 @@ Js 与原生安卓进行交互案例
 
 > 适合搞清 H5 ↔ 原生通信机制与常见坑。不是金融业务壳。
 
+## 下载 APK
+
+- **最新 Release：** https://github.com/cheng2016/JsAndroid/releases/latest  
+- 全部版本：https://github.com/cheng2016/JsAndroid/releases  
+
+> APK 仅通过 GitHub Releases 分发，不入库。包为 debug 签名，仅供演示。
+
 ## 推荐学习路径（先点这 5 个）
 
 1. **Toast / 传 JSON** — 理解 `@JavascriptInterface`
@@ -21,6 +28,10 @@ Js 与原生安卓进行交互案例
 然后再玩：扫码权限、选图 Base64、定位、Cookie、文件选择。
 
 ## 60 秒上手
+
+**方式 A：直接安装** — 从 [Releases](https://github.com/cheng2016/JsAndroid/releases/latest) 下载 APK。
+
+**方式 B：源码运行**
 
 ```bash
 ./gradlew assembleDebug
